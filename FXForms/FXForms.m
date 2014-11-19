@@ -58,6 +58,7 @@ NSString *const FXFormFieldHeader = @"header";
 NSString *const FXFormFieldFooter = @"footer";
 NSString *const FXFormFieldInline = @"inline";
 NSString *const FXFormFieldSortable = @"sortable";
+NSString *const FXFormFieldReadonly = @"readonly";
 NSString *const FXFormFieldViewController = @"viewController";
 
 NSString *const FXFormFieldTypeDefault = @"default";
@@ -628,6 +629,7 @@ static void FXFormPreprocessFieldDictionary(NSMutableDictionary *dictionary)
 @property (nonatomic, readwrite) NSArray *options;
 @property (nonatomic, readwrite) NSDictionary *fieldTemplate;
 @property (nonatomic, readwrite) BOOL isSortable;
+@property (nonatomic, readwrite) BOOL isReadonly;
 @property (nonatomic, readwrite) BOOL isInline;
 @property (nonatomic, readonly) id (^valueTransformer)(id input);
 @property (nonatomic, readonly) id (^reverseValueTransformer)(id input);
@@ -734,6 +736,7 @@ static void FXFormPreprocessFieldDictionary(NSMutableDictionary *dictionary)
         _form = form;
         _formController = formController;
         _cellConfig = [NSMutableDictionary dictionary];
+        _isReadonly = false;
         [attributes enumerateKeysAndObjectsUsingBlock:^(NSString *key, id value, __unused BOOL *stop) {
             [self setValue:value forKey:key];
         }];
@@ -1108,6 +1111,11 @@ static void FXFormPreprocessFieldDictionary(NSMutableDictionary *dictionary)
     _isSortable = sortable;
 }
 
+- (void)setReadonly:(BOOL)readonly
+{
+    _isReadonly = readonly;
+}
+
 - (void)setHeader:(id)header
 {
     if ([header class] == header)
@@ -1131,6 +1139,11 @@ static void FXFormPreprocessFieldDictionary(NSMutableDictionary *dictionary)
     return _isSortable &&
     ([self.valueClass isSubclassOfClass:[NSArray class]] ||
     [self.valueClass isSubclassOfClass:[NSOrderedSet class]]);
+}
+
+- (BOOL)isReadonly
+{
+    return _isReadonly;
 }
 
 #pragma mark -
@@ -2634,6 +2647,10 @@ static void FXFormPreprocessFieldDictionary(NSMutableDictionary *dictionary)
     self.textLabel.text = self.field.title;
     self.detailTextLabel.text = [self.field fieldDescription];
     
+    if (self.field.isReadonly) {
+        self.textLabel.textColor = [UIColor lightGrayColor];
+    }
+
     if ([self.field.type isEqualToString:FXFormFieldTypeLabel])
     {
         self.accessoryType = UITableViewCellAccessoryNone;
@@ -2665,6 +2682,13 @@ static void FXFormPreprocessFieldDictionary(NSMutableDictionary *dictionary)
 
 - (void)didSelectWithTableView:(UITableView *)tableView controller:(UIViewController *)controller
 {
+    if (self.field.isReadonly) {
+        //deselect the cell
+        [tableView deselectRowAtIndexPath:tableView.indexPathForSelectedRow animated:YES];
+        // Any cell selected (without an accessory such as TextField) will do nothing if readonly
+        return;
+    }
+    
     if ([self.field.type isEqualToString:FXFormFieldTypeBoolean] || [self.field.type isEqualToString:FXFormFieldTypeOption])
     {
         [FXFormsFirstResponder(tableView) resignFirstResponder];
@@ -2848,6 +2872,10 @@ static void FXFormPreprocessFieldDictionary(NSMutableDictionary *dictionary)
     self.textField.placeholder = [self.field.placeholder fieldDescription];
     self.textField.text = [self.field fieldDescription];
     
+    if (self.field.isReadonly) {
+        self.textLabel.textColor = [UIColor lightGrayColor];
+    }
+
     self.textField.returnKeyType = UIReturnKeyDone;
     self.textField.textAlignment = [self.field.title length]? NSTextAlignmentRight: NSTextAlignmentLeft;
     self.textField.secureTextEntry = NO;
@@ -2901,6 +2929,11 @@ static void FXFormPreprocessFieldDictionary(NSMutableDictionary *dictionary)
 
 - (BOOL)textFieldShouldBeginEditing:(__unused UITextField *)textField
 {
+    // disable if readonly
+    if (self.field.isReadonly) {
+        return NO;
+    }
+    
     //welcome to hacksville, population: you
     if (!self.returnKeyOverridden)
     {
@@ -3057,7 +3090,11 @@ static void FXFormPreprocessFieldDictionary(NSMutableDictionary *dictionary)
     self.textView.text = [self.field fieldDescription];
     self.detailTextLabel.text = self.field.placeholder;
     self.detailTextLabel.hidden = ([self.textView.text length] > 0);
-    
+
+    if (self.field.isReadonly) {
+        self.textLabel.textColor = [UIColor lightGrayColor];
+    }
+
     self.textView.returnKeyType = UIReturnKeyDefault;
     self.textView.textAlignment = NSTextAlignmentLeft;
     self.textView.secureTextEntry = NO;
@@ -3105,6 +3142,11 @@ static void FXFormPreprocessFieldDictionary(NSMutableDictionary *dictionary)
         self.textView.autocapitalizationType = UITextAutocapitalizationTypeNone;
         self.textView.keyboardType = UIKeyboardTypeURL;
     }
+}
+
+- (BOOL)textViewShouldBeginEditing:(UITextView *)textView {
+    // disable if readonly
+    return !self.field.isReadonly;
 }
 
 - (void)textViewDidBeginEditing:(__unused UITextView *)textView
@@ -3172,6 +3214,9 @@ static void FXFormPreprocessFieldDictionary(NSMutableDictionary *dictionary)
 {
     self.textLabel.text = self.field.title;
     self.switchControl.on = [self.field.value boolValue];
+
+    // disable if readonly
+    self.switchControl.enabled = !self.field.isReadonly;
 }
 
 - (UISwitch *)switchControl
@@ -3212,6 +3257,9 @@ static void FXFormPreprocessFieldDictionary(NSMutableDictionary *dictionary)
     self.textLabel.text = self.field.title;
     self.detailTextLabel.text = [self.field fieldDescription];
     self.stepper.value = [self.field.value doubleValue];
+
+    // disable if readonly
+    self.stepper.enabled = self.field.isReadonly;
 }
 
 - (UIStepper *)stepper
@@ -3264,6 +3312,9 @@ static void FXFormPreprocessFieldDictionary(NSMutableDictionary *dictionary)
 {
     self.textLabel.text = self.field.title;
     self.slider.value = [self.field.value doubleValue];
+
+    // disable if readonly
+    self.slider.enabled = self.field.isReadonly;
 }
 
 - (void)valueChanged
@@ -3295,7 +3346,11 @@ static void FXFormPreprocessFieldDictionary(NSMutableDictionary *dictionary)
 {
     self.textLabel.text = self.field.title;
     self.detailTextLabel.text = [self.field fieldDescription] ?: [self.field.placeholder fieldDescription];
-    
+
+    if (self.field.isReadonly) {
+        self.textLabel.textColor = [UIColor lightGrayColor];
+    }
+
     if ([self.field.type isEqualToString:FXFormFieldTypeDate])
     {
         self.datePicker.datePickerMode = UIDatePickerModeDate;
@@ -3314,7 +3369,7 @@ static void FXFormPreprocessFieldDictionary(NSMutableDictionary *dictionary)
 
 - (BOOL)canBecomeFirstResponder
 {
-    return YES;
+    return !self.field.isReadonly;
 }
 
 - (UIView *)inputView

@@ -54,6 +54,7 @@ UIKIT_EXTERN NSString *const FXFormFieldHeader; //header
 UIKIT_EXTERN NSString *const FXFormFieldFooter; //footer
 UIKIT_EXTERN NSString *const FXFormFieldInline; //inline
 UIKIT_EXTERN NSString *const FXFormFieldSortable; //sortable
+UIKIT_EXTERN NSString *const FXFormFieldReadonly; //readonly
 UIKIT_EXTERN NSString *const FXFormFieldViewController; //viewController
 
 UIKIT_EXTERN NSString *const FXFormFieldTypeDefault; //default
@@ -112,6 +113,7 @@ UIKIT_EXTERN NSString *const FXFormFieldTypeImage; //image
 @property (nonatomic, readonly) id placeholder;
 @property (nonatomic, readonly) NSDictionary *fieldTemplate;
 @property (nonatomic, readonly) BOOL isSortable;
+@property (nonatomic, readonly) BOOL isReadonly;
 @property (nonatomic, readonly) BOOL isInline;
 @property (nonatomic, readonly) Class valueClass;
 @property (nonatomic, readonly) id viewController;
